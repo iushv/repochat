@@ -1,0 +1,9 @@
+langchain
+langchain-huggingface
+langchain-community
+faiss-cpu
+streamlit
+tiktoken
+gitpython
+python-dotenv
+huggingface_hub
