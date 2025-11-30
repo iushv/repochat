@@ -2,6 +2,19 @@
 
 A RAG-based agentic AI assistant that helps you understand and query code repositories using natural language. **Works completely offline** with local LLM and embeddings, or use cloud APIs for faster setup.
 
+## Use Cases
+
+### 🏢 For Organizations & Teams
+- **Onboard new developers faster**: New team members can ask questions about internal/private codebases and get instant, accurate answers
+- **Reduce knowledge silos**: Junior developers can understand complex code without constantly interrupting senior engineers
+- **Private & secure**: Use fully local mode to keep proprietary code completely offline - no data leaves your infrastructure
+- **Legacy code understanding**: Quickly understand undocumented or legacy codebases through natural language queries
+
+### 👨‍💻 For Individual Developers
+- **Learn open-source projects**: Understand how popular libraries work by asking questions
+- **Code exploration**: Navigate large codebases efficiently without reading every file
+- **Documentation assistant**: Get code examples and usage patterns directly from source
+
 ## Features
 
 - 🔍 **Intelligent Code Search**: Vector search using FAISS for finding relevant code
