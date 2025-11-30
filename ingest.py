@@ -98,8 +98,8 @@ def ingest_repo(repo_url: str, use_local_embeddings: bool = False):
         # 3. Split Text (Chunking)
         print("✂️ Splitting code into chunks...")
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=1500,  # Increased from 1000 to reduce fragmentation
+            chunk_overlap=300,  # Increased from 200 for better context
             add_start_index=True,
             separators=["\nclass ", "\ndef ", "\n\n", "\n", " ", ""]
         )

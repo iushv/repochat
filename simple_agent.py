@@ -66,7 +66,7 @@ def simple_agent(question: str, debug: bool = False, use_local_llm: bool = False
     # Step 1: Search for relevant code
     print(f"🔍 Searching codebase for: {question}")
     retriever = get_retriever()
-    retriever.search_kwargs = {"k": 6}
+    retriever.search_kwargs = {"k": 10}  # Increased from 6 to get more context
     docs = retriever.invoke(question)
     
     # Extract source files
@@ -129,7 +129,7 @@ The `authenticate` function decodes the JWT token and retrieves the user from th
 USER'S QUESTION (answer THIS, not other questions): {question}
 
 Code from the repository:
-{search_results[:4000]}{additional_context}
+{search_results[:6000]}{additional_context}
 
 INSTRUCTIONS:
 1. READ THE USER'S QUESTION CAREFULLY
