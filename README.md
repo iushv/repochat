@@ -1,6 +1,6 @@
 # RepoChat 🤖
 
-A RAG-based agentic AI assistant that helps you understand and query code repositories using natural language.
+A RAG-based agentic AI assistant that helps you understand and query code repositories using natural language. **Works completely offline** with local LLM and embeddings, or use cloud APIs for faster setup.
 
 ## Features
 
@@ -9,77 +9,136 @@ A RAG-based agentic AI assistant that helps you understand and query code reposi
 - 📂 **Multi-Step Reasoning**: Automatically reads files when needed for complete context
 - 💬 **Chat Interface**: Clean Streamlit UI for easy interaction
 - 📊 **Source Tracking**: Shows which files were used to generate answers
+- 🖥️ **Local or Cloud**: Choose between local models (LM Studio) or cloud APIs (Hugging Face)
 
 ## Tech Stack
 
-- **LLM**: Hugging Face API (Zephyr 7B Beta)
-- **Embeddings**: sentence-transformers/all-mpnet-base-v2
+- **LLM**: LM Studio (local) or Hugging Face API (Zephyr 7B)
+- **Embeddings**: sentence-transformers (local) or Hugging Face API (all-mpnet-base-v2)
 - **Vector Store**: FAISS
 - **Framework**: LangChain
 - **UI**: Streamlit
 
 ## Installation
 
-1. Clone the repository:
+### Prerequisites
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+
+### Setup
+
+1. **Clone the repository:**
 ```bash
-git clone <your-repo-url>
-cd repo_chat
+git clone https://github.com/iushv/repochat.git
+cd repochat
 ```
 
-2. Create a virtual environment and install dependencies:
+2. **Create virtual environment and install dependencies:**
 ```bash
-python -m venv .venv
+# Using uv (recommended)
+uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
+
+# Or using pip
+python -m venv .venv
+source .venv/bin/activate  
 pip install -r requirements.txt
 ```
 
-3. Set up your Hugging Face API token:
-```bash
-# Create a .env file
-echo "HUGGINGFACEHUB_API_TOKEN=your_token_here" > .env
-```
+3. **Configure based on your preference:**
 
-Get your token from: https://huggingface.co/settings/tokens
+## Configuration Options
+
+### Option 1: Fully Local (No API Required) ⭐ Recommended
+
+**Advantages:**
+- ✅ No rate limits
+- ✅ Completely private/offline
+- ✅ No API costs
+- ✅ Faster for repeated use
+
+**Setup:**
+1. **Install LM Studio**: Download from [lmstudio.ai](https://lmstudio.ai)
+2. **Load a model**: In LM Studio, download and load a model (recommended: Mistral-7B-Instruct, Llama-3-8B)
+3. **Start server**: Click "Start Server" in LM Studio (runs on `http://localhost:1234`)
+4. **No .env file needed!**
+5. **In the Streamlit UI**:
+   - ✅ Check "Use Local Embeddings"
+   - ✅ Check "Use Local LLM (LM Studio)"
+
+### Option 2: Cloud APIs (Faster Setup)
+
+**Advantages:**
+- ✅ Quick setup
+- ✅ No local compute needed
+- ⚠️ Requires API key
+- ⚠️ Rate limits on free tier
+
+**Setup:**
+1. **Get Hugging Face API token**: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+2. **Create `.env` file:**
+```bash
+cp .env.example .env
+# Edit .env and add your token:
+HUGGINGFACEHUB_API_TOKEN=your_token_here
+```
+3. **In the Streamlit UI**:
+   - ⬜ Leave "Use Local Embeddings" unchecked
+   - ⬜ Leave "Use Local LLM" unchecked
+
+### Option 3: Hybrid (Local Embeddings + API LLM)
+
+**Best for:**  
+- Avoiding embedding API timeouts
+- Using API LLM for better quality
+- Still keeping data semi-private
+
+**Setup:**
+1. Add HF API token to `.env` (see Option 2)
+2. **In the Streamlit UI**:
+   - ✅ Check "Use Local Embeddings"
+   - ⬜ Leave "Use Local LLM" unchecked
 
 ## Usage
 
-1. Start the Streamlit app:
+1. **Start the app:**
 ```bash
 streamlit run app.py
 ```
 
-2. In the sidebar, enter a GitHub repository URL and click "Ingest Repository"
+2. **Ingest a repository:**
+   - Enter a GitHub URL in the sidebar (e.g., `https://github.com/username/repo`)
+   - Select your preferred settings (local vs API)
+   - Click "Ingest Repository"
+   - Wait 1-5 minutes depending on repo size
 
-3. Wait for the ingestion to complete (1-2 minutes for small repos)
-
-4. Start asking questions about the code!
-
-### Example Questions
-
-- "What does this repo do?"
-- "How does the authentication work?"
-- "Show me an example of the zero-shot-react agent"
-- "Explain the main function"
+3. **Ask questions:**
+   - "What does this repo do?"
+   - "How does the authentication work?"
+   - "Show me an example of the zero-shot-react agent"
+   - "Explain the main function"
 
 ## Project Structure
 
 ```
-repo_chat/
+repochat/
 ├── app.py              # Streamlit UI
 ├── simple_agent.py     # Agent with multi-step reasoning
-├── custom_llm.py       # Custom LLM wrapper for HF API
+├── custom_llm.py       # HF API LLM wrapper
+├── local_llm.py        # LM Studio local LLM wrapper
 ├── ingest.py           # Repository ingestion pipeline
 ├── vector_store.py     # FAISS vector store wrapper
 ├── requirements.txt    # Python dependencies
-├── .env               # API keys (not in git)
-└── .gitignore         # Git ignore rules
+├── .env.example        # Environment variable template
+└── README.md          # This file
 ```
 
 ## How It Works
 
-1. **Ingestion**: Clones the repo, chunks code files, generates embeddings, stores in FAISS
-2. **Search**: When you ask a question, retrieves the 6 most relevant code chunks
-3. **Reasoning**: Detects if full file reading is needed (keywords like "show me", "example")
+1. **Ingestion**: Clones repo → chunks code files → generates embeddings → stores in FAISS
+2. **Search**: Retrieves top 6 most relevant code chunks for your question
+3. **Reasoning**: Detects if full file reading needed (keywords like "show me", "example")
 4. **Answer**: LLM generates response with actual code snippets and explanations
 
 ## Features in Detail
@@ -93,25 +152,57 @@ The agent automatically reads full files when:
 Each answer includes an expandable "📂 Source Files" section showing which files were used.
 
 ### Code-Aware Chunking
-Uses LangChain's `RecursiveCharacterTextSplitter` with separators optimized for code:
-- `\nclass ` - Python class definitions
-- `\ndef ` - Python function definitions  
+Uses `RecursiveCharacterTextSplitter` with separators optimized for code:
+- `\nclass ` - Class definitions
+- `\ndef ` - Function definitions  
 - `\n\n` - Paragraph breaks
-- etc.
+
+### Local vs API Comparison
+
+| Feature | Local | API |
+|---------|-------|-----|
+| Setup Time | Longer (download models) | Quick |
+| API Key | Not needed | Required |
+| Privacy | Fully private | Data sent to API |
+| Speed (first time) | Slower | Faster |
+| Speed (repeated) | Faster | Same |
+| Rate Limits | None | Yes (free tier) |
+| Offline | Yes | No |
+| Cost | Free (uses local compute) | Free tier available |
+
+## Troubleshooting
+
+**"504 Gateway Timeout" errors:**
+- Switch to local embeddings and/or local LLM
+- Try a smaller repository
+- Wait a few minutes and retry
+
+**LM Studio connection failed:**
+- Verify LM Studio is running
+- Check server is on `http://localhost:1234`
+- Ensure a model is loaded
+
+**Slow embedding/inference:**
+- Local embeddings: First run downloads model (~400MB), subsequent runs are fast
+- Local LLM: Depends on your hardware (GPU recommended but not required)
 
 ## Limitations
 
-- **Free Tier API**: Uses Hugging Face's free Inference API (may have rate limits)
-- **Model Size**: Zephyr 7B is smaller than GPT-4; answers may vary in quality
 - **Context Window**: Limited to ~6KB of context (4KB search + 2KB file content)
+- **Code Languages**: Works best with well-documented code
+- **Repo Size**: Very large repos (>100K files) may take time to ingest
 
 ## Future Improvements
 
 - [ ] AST-based chunking for better code understanding
-- [ ] Support for local LLMs (Ollama)
-- [ ] Better response caching
-- [ ] Support for multiple programming languages
-- [ ] Repository comparison features
+- [ ] Support for Ollama (alternative to LM Studio)
+- [ ] Response caching
+- [ ] Multi-repo search
+- [ ] Code execution for verification
+
+## Contributing
+
+Contributions welcome! Feel free to open issues or PRs.
 
 ## License
 
@@ -119,4 +210,5 @@ MIT
 
 ## Author
 
-Created as a portfolio project demonstrating RAG + Agentic AI capabilities.
+Created as a portfolio project demonstrating RAG + Agentic AI capabilities with both local and cloud deployment options.
+

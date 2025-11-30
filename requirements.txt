@@ -1,9 +1,13 @@
 langchain
-langchain-huggingface
 langchain-community
+langchain-huggingface
 faiss-cpu
 streamlit
 tiktoken
 gitpython
 python-dotenv
 huggingface_hub
+scikit-learn
+scipy
+openai
+sentence-transformers

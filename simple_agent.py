@@ -36,17 +36,32 @@ def read_file(file_path: str) -> str:
     except Exception as e:
         return f"Error reading file: {e}"
 
-def simple_agent(question: str, debug: bool = False) -> dict:
+def simple_agent(question: str, debug: bool = False, use_local_llm: bool = False) -> dict:
     """
     Simple agent that searches the codebase and answers questions.
     Uses multi-step reasoning: search -> read files if needed -> answer.
     Returns both answer and source information.
+    
+    Args:
+        question: The question to answer
+        debug: Enable debug output
+        use_local_llm: If True, use LM Studio local LLM. If False, use HF API.
     """
-    api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-    llm = CustomHFLLM(
-        repo_id="HuggingFaceH4/zephyr-7b-beta",
-        token=api_key
-    )
+    # Initialize LLM based on preference
+    if use_local_llm:
+        from local_llm import LocalLLM
+        if debug:
+            print("🖥️  Using LOCAL LLM (LM Studio)")
+        llm = LocalLLM()
+    else:
+        from custom_llm import CustomHFLLM
+        if debug:
+            print("☁️  Using Hugging Face API")
+        api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+        llm = CustomHFLLM(
+            repo_id="HuggingFaceH4/zephyr-7b-beta",
+            token=api_key
+        )
     
     # Step 1: Search for relevant code
     print(f"🔍 Searching codebase for: {question}")

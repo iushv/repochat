@@ -32,7 +32,10 @@ with st.sidebar:
                 sys.stdout = mystdout = io.StringIO()
                 
                 try:
-                    ingest_repo(repo_url)
+                    ingest_repo(
+                        repo_url,
+                        use_local_embeddings=st.session_state.get("use_local_embeddings", False)
+                    )
                     output = mystdout.getvalue()
                     st.success("Ingestion Complete!")
                     with st.expander("View Logs"):
@@ -44,6 +47,39 @@ with st.sidebar:
         else:
             st.warning("Please enter a URL.")
 
+    # LLM Selection
+    st.header("⚙️ Settings")
+    
+    use_local_embed = st.checkbox(
+        "Use Local Embeddings",
+        value=False,
+        help="Use sentence-transformers locally instead of HF API (slower first time, then faster)"
+    )
+    
+    if "use_local_embeddings" not in st.session_state:
+        st.session_state.use_local_embeddings = False
+    st.session_state.use_local_embeddings = use_local_embed
+    
+    st.divider()
+    
+    # LLM Selection
+    use_local = st.checkbox(
+        "Use Local LLM (LM Studio)", 
+        value=False,
+        help="Enable this if you have LM Studio running on localhost:1234"
+    )
+    
+    if use_local:
+        st.info("🖥️ Using local LLM via LM Studio")
+        st.caption("Make sure LM Studio is running with a model loaded!")
+    else:
+        st.info("☁️ Using Hugging Face API (Zephyr 7B)")
+    
+    # Store in session state
+    if "use_local_llm" not in st.session_state:
+        st.session_state.use_local_llm = False
+    st.session_state.use_local_llm = use_local
+    
     st.divider()
     st.info("Built with LangChain, FAISS, and Hugging Face.")
 
@@ -73,7 +109,10 @@ if prompt := st.chat_input("Ask about the codebase..."):
     with st.chat_message("assistant"):
         with st.spinner("🤔 Thinking..."):
             try:
-                result = simple_agent(prompt)
+                result = simple_agent(
+                    prompt, 
+                    use_local_llm=st.session_state.get("use_local_llm", False)
+                )
                 answer = result["answer"]
                 sources = result["sources"]
                 

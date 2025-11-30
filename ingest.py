@@ -4,7 +4,7 @@ import tempfile
 from git import Repo
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings, HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 
@@ -14,9 +14,14 @@ load_dotenv()
 FAISS_PATH = "faiss_index"
 EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 
-def ingest_repo(repo_url):
+def ingest_repo(repo_url: str, use_local_embeddings: bool = False):
     """
-    Clones a repository, chunks the code, and indexes it into FAISS.
+    Ingests a GitHub repository into a FAISS vector store.
+    
+    Args:
+        repo_url: GitHub repository URL
+        use_local_embeddings: If True, use local sentence-transformers. 
+                            If False, use Hugging Face API.
     """
     print(f"🚀 Starting ingestion for: {repo_url}")
     
@@ -67,16 +72,31 @@ def ingest_repo(repo_url):
         print(f"🧩 Created {len(chunks)} chunks.")
 
         # 4. Embed & Store
-        print("💾 Indexing to FAISS (via API Embeddings)...")
-        api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-        embeddings = HuggingFaceEndpointEmbeddings(
-            huggingfacehub_api_token=api_key,
-            model=EMBEDDING_MODEL
-        )
+        print("💾 Indexing to FAISS...")
+        
+        # Choose embedding method
+        if use_local_embeddings:
+            print("🖥️  Using LOCAL embeddings (sentence-transformers)")
+            embeddings = HuggingFaceEmbeddings(
+                model_name=EMBEDDING_MODEL,
+                model_kwargs={'device': 'cpu'}
+            )
+        else:
+            print("☁️  Using Hugging Face API embeddings")
+            api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+            embeddings = HuggingFaceEndpointEmbeddings(
+                huggingfacehub_api_token=api_key,
+                model=EMBEDDING_MODEL
+            )
         
         # Initialize FAISS
         vector_store = FAISS.from_documents(chunks, embeddings)
         vector_store.save_local(FAISS_PATH)
+        
+        # Save a flag to indicate which embedding method was used
+        if use_local_embeddings:
+            with open(os.path.join(FAISS_PATH, ".local_embeddings"), "w") as f:
+                f.write("true")
         
         print(f"✅ Ingestion Complete! Database saved to {FAISS_PATH}")
             
