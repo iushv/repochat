@@ -63,25 +63,28 @@ with st.sidebar:
     
     if st.button("Ingest Repository"):
         if repo_url:
-            with st.spinner("Cloning and Indexing... (This may take a minute)"):
-                # Capture stdout to show progress
-                # This is a bit hacky but useful for the POC to show what's happening
-                old_stdout = sys.stdout
+            with st.spinner("Ingesting repository..."):
+                # Capture stdout for logs
                 sys.stdout = mystdout = io.StringIO()
                 
                 try:
-                    ingest_repo(
+                    result = ingest_repo(
                         repo_url,
                         use_local_embeddings=st.session_state.get("use_local_embeddings", False)
                     )
                     output = mystdout.getvalue()
-                    st.success("Ingestion Complete!")
+                    
+                    if result and result.get("success"):
+                        st.success(f"✅ Ingestion Complete! Indexed {result['documents']} files into {result['chunks']} chunks.")
+                    else:
+                        st.error(f"❌ Ingestion Failed: {result.get('message', 'Unknown error')}")
+                    
                     with st.expander("View Logs"):
                         st.code(output)
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                except Exception as e: # Keep the exception handling for unexpected errors
+                    st.error(f"An unexpected error occurred during ingestion: {e}")
                 finally:
-                    sys.stdout = old_stdout
+                    sys.stdout = sys.__stdout__
         else:
             st.warning("Please enter a URL.")
 
