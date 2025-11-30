@@ -13,18 +13,23 @@ from langchain_core.messages import HumanMessage, AIMessage
 import io
 
 # Page Config
-st.set_page_config(page_title="RepoChat", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="RepoChat - Private Code Onboarding", page_icon="🔒", layout="wide")
 
-st.title("💬 RepoChat - AI-Powered Code Onboarding")
-st.markdown("**Understand any codebase through conversation** — Perfect for onboarding to internal repos, legacy code, or open-source projects")
+st.title("🔒 RepoChat - Privacy-First Code Onboarding")
+st.markdown("**Understand any codebase through conversation** — Fully private by default, perfect for internal repos")
 
 # Add helpful info box
 with st.expander("💡 How to use RepoChat", expanded=False):
     st.markdown("""
+    **Privacy-First by Default:**
+    - RepoChat runs in **fully private mode** by default
+    - All processing happens on your machine
+    - Perfect for proprietary/internal codebases
+    
     **For Teams & Organizations:**
     - Ingest your **private/internal repositories** (works with any Git URL)
-    - Enable **Local mode** to keep proprietary code completely offline
     - New developers can ask questions and get instant answers
+    - No code leaves your infrastructure
     
     **Sample Questions:**
     - "What does this codebase do?"
@@ -33,7 +38,11 @@ with st.expander("💡 How to use RepoChat", expanded=False):
     - "Explain the database schema"
     - "Where is the API endpoint for user login?"
     
-    **Privacy Note:** Use local embeddings + local LLM for complete data privacy.
+    **Setup Required for Privacy Mode:**
+    - Install and run LM Studio (localhost:1234)
+    - First run will download embedding model (~400MB)
+    
+    **To use Cloud APIs instead:** Disable Privacy Mode in settings
     """)
 
 st.divider()
@@ -76,45 +85,46 @@ with st.sidebar:
         else:
             st.warning("Please enter a URL.")
 
-    # LLM Selection
-    st.header("⚙️ Privacy & Settings")
-    st.caption("💡 Enable local mode for complete data privacy with internal/proprietary code")
+    # Privacy Mode - Single Toggle
+    st.header("🔒 Privacy Mode")
+    st.caption("**Default: Fully Private** — All processing happens on your machine")
     
-    st.subheader("2. Embedding Mode")
-    use_local_embed = st.checkbox(
-        "🔒 Use Local Embeddings (Private)",
-        value=False,
-        help="Runs on your machine - code never leaves your infrastructure"
+    privacy_mode = st.toggle(
+        "Enable Privacy Mode (Recommended)",
+        value=True,  # Default to ON
+        help="When enabled: Uses local embeddings + local LLM. No data sent to external APIs. Requires LM Studio running on localhost:1234"
     )
-    
-    if "use_local_embeddings" not in st.session_state:
-        st.session_state.use_local_embeddings = False
-    st.session_state.use_local_embeddings = use_local_embed
-    
-    st.divider()
-    
-    st.subheader("3. LLM Mode")
-    
-    # LLM Selection
-    use_local = st.checkbox(
-        "🔒 Use Local LLM (Private)", 
-        value=False,
-        help="LM Studio on localhost - responses stay completely private"
-    )
-    
-    if use_local:
-        st.info("🖥️ Using local LLM via LM Studio")
-        st.caption("Make sure LM Studio is running with a model loaded!")
-    else:
-        st.info("☁️ Using Hugging Face API (Zephyr 7B)")
     
     # Store in session state
-    if "use_local_llm" not in st.session_state:
-        st.session_state.use_local_llm = False
-    st.session_state.use_local_llm = use_local
+    if "privacy_mode" not in st.session_state:
+        st.session_state.privacy_mode = True
+    st.session_state.privacy_mode = privacy_mode
+    
+    # Automatically set embedding and LLM preferences based on privacy mode
+    st.session_state.use_local_embeddings = privacy_mode
+    st.session_state.use_local_llm = privacy_mode
+    
+    # Show current mode
+    if privacy_mode:
+        st.success("✅ **Fully Private Mode Active**")
+        st.markdown("""
+        - ✅ Embeddings: Local (sentence-transformers)
+        - ✅ LLM: Local (LM Studio required)
+        - ✅ No external API calls
+        - ✅ Code stays on your infrastructure
+        """)
+        st.warning("⚠️ **Requirement**: LM Studio must be running on `localhost:1234`")
+    else:
+        st.info("☁️ **Cloud API Mode Active**")
+        st.markdown("""
+        - ☁️ Embeddings: Hugging Face API
+        - ☁️ LLM: Hugging Face API
+        - ⚠️ Requires `HUGGINGFACEHUB_API_TOKEN` in .env
+        - ⚠️ Subject to rate limits
+        """)
     
     st.divider()
-    st.info("🏢 **For Organizations:** Use fully local mode to onboard developers to private repos while keeping code secure and offline.")
+    st.info("🏢 **For Organizations:** Privacy Mode is enabled by default to keep your proprietary code secure.")
 
 # Chat Interface
 if "messages" not in st.session_state:
