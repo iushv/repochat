@@ -15,13 +15,42 @@ import io
 # Page Config
 st.set_page_config(page_title="RepoChat", page_icon="🤖", layout="wide")
 
-st.title("🤖 RepoChat: Agentic Code Assistant")
-st.markdown("Chat with your codebase using RAG + Agents.")
+st.title("💬 RepoChat - AI-Powered Code Onboarding")
+st.markdown("**Understand any codebase through conversation** — Perfect for onboarding to internal repos, legacy code, or open-source projects")
 
-# Sidebar for Ingestion
+# Add helpful info box
+with st.expander("💡 How to use RepoChat", expanded=False):
+    st.markdown("""
+    **For Teams & Organizations:**
+    - Ingest your **private/internal repositories** (works with any Git URL)
+    - Enable **Local mode** to keep proprietary code completely offline
+    - New developers can ask questions and get instant answers
+    
+    **Sample Questions:**
+    - "What does this codebase do?"
+    - "How is authentication implemented?"
+    - "Show me an example of how to add a new feature"
+    - "Explain the database schema"
+    - "Where is the API endpoint for user login?"
+    
+    **Privacy Note:** Use local embeddings + local LLM for complete data privacy.
+    """)
+
+st.divider()
+
+# Sidebar - Repository Ingestion
 with st.sidebar:
-    st.header("📂 Repository Ingestion")
-    repo_url = st.text_input("GitHub Repo URL", placeholder="https://github.com/username/repo")
+    st.header("📚 Repository Setup")
+    st.markdown("**Onboard to any codebase** — Works with public repos or private internal code")
+    
+    st.divider()
+    # Repository URL input
+    st.subheader("1. Repository URL")
+    repo_url = st.text_input(
+        "GitHub URL",
+        placeholder="https://github.com/username/repo",
+        help="Works with public repos or private repos (if you have access)"
+    )
     
     if st.button("Ingest Repository"):
         if repo_url:
@@ -48,12 +77,14 @@ with st.sidebar:
             st.warning("Please enter a URL.")
 
     # LLM Selection
-    st.header("⚙️ Settings")
+    st.header("⚙️ Privacy & Settings")
+    st.caption("💡 Enable local mode for complete data privacy with internal/proprietary code")
     
+    st.subheader("2. Embedding Mode")
     use_local_embed = st.checkbox(
-        "Use Local Embeddings",
+        "🔒 Use Local Embeddings (Private)",
         value=False,
-        help="Use sentence-transformers locally instead of HF API (slower first time, then faster)"
+        help="Runs on your machine - code never leaves your infrastructure"
     )
     
     if "use_local_embeddings" not in st.session_state:
@@ -62,11 +93,13 @@ with st.sidebar:
     
     st.divider()
     
+    st.subheader("3. LLM Mode")
+    
     # LLM Selection
     use_local = st.checkbox(
-        "Use Local LLM (LM Studio)", 
+        "🔒 Use Local LLM (Private)", 
         value=False,
-        help="Enable this if you have LM Studio running on localhost:1234"
+        help="LM Studio on localhost - responses stay completely private"
     )
     
     if use_local:
@@ -81,7 +114,7 @@ with st.sidebar:
     st.session_state.use_local_llm = use_local
     
     st.divider()
-    st.info("Built with LangChain, FAISS, and Hugging Face.")
+    st.info("🏢 **For Organizations:** Use fully local mode to onboard developers to private repos while keeping code secure and offline.")
 
 # Chat Interface
 if "messages" not in st.session_state:
