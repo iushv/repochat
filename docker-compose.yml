@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=local
+      - LLM_BASE_URL=http://host.docker.internal:1234/v1
+      - USE_LOCAL_EMBEDDINGS=true
+      - DEBUG=false
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+
+volumes:
+  data:
