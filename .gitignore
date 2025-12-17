@@ -28,6 +28,7 @@ ENV/
 # Project Specific
 repo_data/
 faiss_index/
+data/
 *.log
 
 # Jupyter

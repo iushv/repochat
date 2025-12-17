@@ -67,6 +67,54 @@ async def ingest_repository(request: IngestRequest):
     return result
 
 
+@router.post("/repos/ingest/stream")
+async def ingest_repository_stream(request: IngestRequest):
+    """Ingest a GitHub repository with streaming progress updates."""
+    logger.info(f"Ingesting repository (streaming): {request.url}")
+    
+    async def generate():
+        try:
+            # Extract repo name
+            repo_name = request.url.split("/")[-1].replace(".git", "")
+            
+            # Progress: Starting
+            start_data = json.dumps({'stage': 'starting', 'message': 'Initializing...', 'progress': 5})
+            yield f"data: {start_data}\n\n"
+            
+            # Progress: Cloning
+            clone_msg = f'Cloning {repo_name}...'
+            clone_data = json.dumps({'stage': 'cloning', 'message': clone_msg, 'progress': 15})
+            yield f"data: {clone_data}\n\n"
+            
+            # Actually perform ingestion
+            result = await rag_service.ingest_repository(request.url)
+            
+            if result["success"]:
+                # Progress: Complete
+                docs = result["documents"]
+                chunks = result["chunks"]
+                complete_msg = f'Indexed {docs} files ({chunks} chunks)'
+                complete_data = json.dumps({'stage': 'complete', 'message': complete_msg, 'progress': 100, 'result': result})
+                yield f"data: {complete_data}\n\n"
+            else:
+                error_data = json.dumps({'stage': 'error', 'message': result['message'], 'progress': 0})
+                yield f"data: {error_data}\n\n"
+                
+        except Exception as e:
+            logger.error(f"Ingestion stream failed: {e}")
+            error_data = json.dumps({'stage': 'error', 'message': str(e), 'progress': 0})
+            yield f"data: {error_data}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
 @router.get("/repos/status")
 async def get_repo_status():
     """Get current repository/index status."""
@@ -91,23 +139,30 @@ async def chat(request: ChatRequest):
             detail="No relevant code found for your question."
         )
     
-    # Build prompt
-    system_prompt = """You are RepoChat, an AI assistant that helps developers understand codebases.
-You answer questions based ONLY on the provided code context.
-Always include relevant code snippets in your answers.
-Be concise but thorough.
-If the context doesn't contain enough information to answer, say so."""
+    # Build prompt with enhanced formatting instructions
+    system_prompt = """You are RepoChat, an expert AI assistant that helps developers understand codebases.
+
+RESPONSE FORMATTING RULES:
+1. Start with a brief 1-2 sentence summary answering the question directly
+2. Use clear markdown headers (## and ###) to organize longer responses
+3. When showing code, ALWAYS use fenced code blocks with the language: ```python, ```javascript, etc.
+4. Keep explanations concise and scannable - use bullet points for lists
+5. Include file paths as inline code: `path/to/file.py`
+6. When referencing multiple files, use a table or bullet list
+7. End with a brief "Key Takeaway" if the response is complex
+
+CONTENT RULES:
+- Answer based ONLY on the provided code context
+- Be specific - reference actual function/class names from the code
+- If information isn't in the context, say "Based on the provided code, I cannot find..."
+- Don't hallucinate or assume functionality not shown"""
 
     user_prompt = f"""Question: {request.question}
 
-Code Context:
+Code Context (from repository files):
 {context}
 
-Instructions:
-1. Answer the question based on the code above
-2. Include relevant code snippets with file paths
-3. Be specific and accurate
-4. If unsure, say so"""
+Provide a clear, well-formatted answer following the formatting rules. Be concise but thorough."""
 
     if request.stream:
         # Streaming response

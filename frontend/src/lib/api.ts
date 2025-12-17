@@ -55,6 +55,53 @@ export async function ingestRepository(url: string): Promise<IngestResponse> {
     return res.json();
 }
 
+// Ingest repository with streaming progress
+export async function* streamIngest(url: string): AsyncGenerator<{
+    stage: 'starting' | 'cloning' | 'loading' | 'embedding' | 'complete' | 'error';
+    message: string;
+    progress: number;
+    result?: IngestResponse;
+}> {
+    const res = await fetch(`${API_BASE}/repos/ingest/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Ingestion failed');
+    }
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) throw new Error('No response body');
+
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+            const lines = part.split('\n').filter(line => line.startsWith('data: '));
+            for (const line of lines) {
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    yield data;
+                } catch {
+                    // Ignore parse errors
+                }
+            }
+        }
+    }
+}
+
 // Chat with streaming
 export async function* streamChat(question: string): AsyncGenerator<{
     type: 'sources' | 'token' | 'done' | 'error';
@@ -76,13 +123,39 @@ export async function* streamChat(question: string): AsyncGenerator<{
 
     if (!reader) throw new Error('No response body');
 
+    let buffer = '';  // Buffer for incomplete SSE messages
+
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const text = decoder.decode(value);
-        const lines = text.split('\n').filter(line => line.startsWith('data: '));
+        // Append new data to buffer
+        buffer += decoder.decode(value, { stream: true });
 
+        // Split on double newlines (SSE message separator)
+        const parts = buffer.split('\n\n');
+
+        // Keep the last part in buffer (might be incomplete)
+        buffer = parts.pop() || '';
+
+        // Process complete messages
+        for (const part of parts) {
+            const lines = part.split('\n').filter(line => line.startsWith('data: '));
+
+            for (const line of lines) {
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    yield data;
+                } catch {
+                    // Ignore parse errors
+                }
+            }
+        }
+    }
+
+    // Process any remaining buffer
+    if (buffer.trim()) {
+        const lines = buffer.split('\n').filter(line => line.startsWith('data: '));
         for (const line of lines) {
             try {
                 const data = JSON.parse(line.slice(6));
